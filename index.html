@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Simulator PLTB – Perbandingan HAWT vs VAWT</title>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js">
+    </script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+            background: linear-gradient(145deg, #f0f9ff 0%, #d9eef7 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .card {
+            max-width: 1200px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(8px);
+            border-radius: 40px;
+            padding: 30px 35px;
+            box-shadow: 0 25px 50px -10px rgba(0, 40, 60, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+        h1 {
+            font-size: 2.2rem;
+            font-weight: 600;
+            color: #0b3b4a;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 6px;
+        }
+        h1 small {
+            font-size: 1rem;
+            font-weight: 400;
+            color: #2a6b7c;
+            margin-left: auto;
+        }
+        .sub {
+            color: #1f5a6b;
+            border-left: 4px solid #39a0c7;
+            padding-left: 16px;
+            margin-bottom: 25px;
+            font-size: 1.05rem;
+            font-weight: 400;
+        }
+        .param-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px 18px;
+            background: #e6f3f9;
+            padding: 18px 22px;
+            border-radius: 28px;
+            margin-bottom: 28px;
+            border: 1px solid #c2dde9;
+        }
+        .param-col {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .param-col .title {
+            font-weight: 700;
+            font-size: 1rem;
+            border-bottom: 2px solid;
+            padding-bottom: 4px;
+            margin-bottom: 6px;
+        }
+        .param-col.hawt .title { color: #0b6b84; border-color: #0b6b84; }
+        .param-col.vawt .title { color: #b85a1a; border-color: #b85a1a; }
+        .param-item {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            padding: 2px 0;
+        }
+        .param-item .label { color: #1f5a6b; }
+        .param-item .value { font-weight: 600; color: #08303d; }
+        .slider-section {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 20px;
+        }
+        .slider-section label {
+            font-weight: 600;
+            color: #0b3b4a;
+            font-size: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .slider-section label .hint {
+            font-weight: 400;
+            color: #2a6b7c;
+            font-size: 0.85rem;
+        }
+        input[type="range"] {
+            width: 100%;
+            height: 8px;
+            -webkit-appearance: none;
+            background: linear-gradient(to right, #7fc3db, #1d7b96);
+            border-radius: 10px;
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 22px;
+            height: 22px;
+            background: #0d4b5e;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            border: 2px solid white;
+            transition: 0.1s;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+        }
+        .slider-ticks {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.65rem;
+            color: #1d5a6b;
+            padding: 0 6px;
+            margin-top: -2px;
+        }
+        .live-values {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr;
+            gap: 10px;
+            background: #d7eaf3;
+            border-radius: 30px;
+            padding: 14px 18px;
+            margin: 8px 0 22px 0;
+            border: 1px solid #b7d3e0;
+        }
+        .live-item {
+            text-align: center;
+        }
+        .live-item .label {
+            font-size: 0.7rem;
+            color: #1a5366;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            font-weight: 600;
+        }
+        .live-item .number {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #022b39;
+            line-height: 1.2;
+        }
+        .live-item .unit {
+            font-size: 0.8rem;
+            font-weight: 400;
+            color: #1f5a6b;
+            margin-left: 4px;
+        }
+        .live-item.hawt .number { color: #0b6b84; }
+        .live-item.vawt .number { color: #b85a1a; }
+        .chart-container {
+            position: relative;
+            height: 350px;
+            margin-top: 10px;
+            background: white;
+            border-radius: 28px;
+            padding: 15px 10px 5px 10px;
+            box-shadow: inset 0 2px 6px rgba(0,0,0,0.04);
+            border: 1px solid #d6e8f0;
+        }
+        .footer-note {
+            margin-top: 20px;
+            font-size: 0.85rem;
+            color: #1f5a6b;
+            text-align: center;
+            border-top: 1px solid #bed7e4;
+            padding-top: 16px;
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .footer-note .credit {
+            font-weight: 500;
+            color: #08303d;
+        }
+        .legend-color {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 4px;
+            margin-right: 4px;
+        }
+        @media (max-width: 700px) {
+            .card { padding: 20px; }
+            h1 { font-size: 1.6rem; }
+            .param-grid { grid-template-columns: 1fr; }
+            .live-values { grid-template-columns: 1fr 1fr; }
+            .live-item .number { font-size: 1.2rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>
+            ⚡ Perbandingan PLTB
+            <small>HAWT vs VAWT</small>
+        </h1>
+        <div class="sub">
+            Geser slider untuk mengubah kecepatan angin — bandingkan kurva daya dan efisiensi (Cp) kedua turbin
+        </div>
+
+        <!-- Parameter Turbin -->
+        <div class="param-grid">
+            <div class="param-col hawt">
+                <div class="title">🔵 HAWT (Sumbu Horizontal)</div>
+                <div class="param-item"><span class="label">Diameter rotor</span><span class="value">2,0 m</span></div>
+                <div class="param-item"><span class="label">Cut‑in speed</span><span class="value">3,0 m/s</span></div>
+                <div class="param-item"><span class="label">Rated speed</span><span class="value">12,0 m/s</span></div>
+                <div class="param-item"><span class="label">Cut‑out speed</span><span class="value">25,0 m/s</span></div>
+                <div class="param-item"><span class="label">Cp maksimum</span><span class="value">0,45</span></div>
+                <div class="param-item"><span class="label">Daya rated</span><span class="value" id="ratedHAWT">1.498 W</span></div>
+            </div>
+            <div class="param-col vawt">
+                <div class="title">🟠 VAWT (Sumbu Vertikal)</div>
+                <div class="param-item"><span class="label">Diameter rotor</span><span class="value">2,0 m</span></div>
+                <div class="param-item"><span class="label">Cut‑in speed</span><span class="value">2,5 m/s</span></div>
+                <div class="param-item"><span class="label">Rated speed</span><span class="value">10,0 m/s</span></div>
+                <div class="param-item"><span class="label">Cut‑out speed</span><span class="value">22,0 m/s</span></div>
+                <div class="param-item"><span class="label">Cp maksimum</span><span class="value">0,35</span></div>
+                <div class="param-item"><span class="label">Daya rated</span><span class="value" id="ratedVAWT">673 W</span></div>
+            </div>
+        </div>
+
+        <!-- Slider (tanpa label angka) -->
+        <div class="slider-section">
+            <label>
+                <span>Kecepatan angin <span class="hint">(geser untuk mengubah)</span></span>
+            </label>
+            <input type="range" id="windSlider" min="0" max="30" step="0.1" value="6" />
+            <div class="slider-ticks">
+                <span>0</span> <span>cut‑in V (2,5)</span> <span>cut‑in H (3)</span>
+                <span>rated V (10)</span> <span>rated H (12)</span>
+                <span>cut‑out V (22)</span> <span>cut‑out H (25)</span> <span>30</span>
+            </div>
+        </div>
+
+        <!-- Nilai Real-Time (tanpa kecepatan) -->
+        <div class="live-values">
+            <div class="live-item hawt">
+                <div class="label">⚡ Daya HAWT</div>
+                <div class="number" id="livePowerHAWT">0 <span class="unit">W</span></div>
+            </div>
+            <div class="live-item hawt">
+                <div class="label">Cp HAWT</div>
+                <div class="number" id="liveCpHAWT">0,00</div>
+            </div>
+            <div class="live-item vawt">
+                <div class="label">⚡ Daya VAWT</div>
+                <div class="number" id="livePowerVAWT">0 <span class="unit">W</span></div>
+            </div>
+            <div class="live-item vawt">
+                <div class="label">Cp VAWT</div>
+                <div class="number" id="liveCpVAWT">0,00</div>
+            </div>
+        </div>
+
+        <!-- Grafik -->
+        <div class="chart-container">
+            <canvas id="powerChart"></canvas>
+        </div>
+
+        <div class="footer-note">
+            <span>⚙️ ρ = 1,225 kg/m³ • Luas sapuan sama (D=2m) • HAWT: Cp 0.45, VAWT: Cp 0.35</span>
+            <span class="credit">© Janto V. Sulungbudi — FÜN (Fisika UNPAR)</span>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            // --- Konfigurasi HAWT ---
+            const HAWT = {
+                cut_in: 3.0,
+                rated: 12.0,
+                cut_out: 25.0,
+                cp_max: 0.45,
+                color: '#0b6b84',
+                name: 'HAWT'
+            };
+            // --- Konfigurasi VAWT ---
+            const VAWT = {
+                cut_in: 2.5,
+                rated: 10.0,
+                cut_out: 22.0,
+                cp_max: 0.35,
+                color: '#b85a1a',
+                name: 'VAWT'
+            };
+
+            const DIAMETER = 2.0;
+            const AREA = Math.PI * Math.pow(DIAMETER / 2, 2);
+            const RHO = 1.225;
+
+            // Hitung daya rated masing-masing
+            function calcRated(cfg) {
+                return 0.5 * RHO * AREA * Math.pow(cfg.rated, 3) * cfg.cp_max;
+            }
+            const P_RATED_HAWT = calcRated(HAWT);
+            const P_RATED_VAWT = calcRated(VAWT);
+            document.getElementById('ratedHAWT').textContent = P_RATED_HAWT.toFixed(0) + ' W';
+            document.getElementById('ratedVAWT').textContent = P_RATED_VAWT.toFixed(0) + ' W';
+
+            // Fungsi daya & Cp untuk satu konfigurasi
+            function powerAndCp(v, cfg, p_rated) {
+                let P = 0;
+                if (v < cfg.cut_in || v > cfg.cut_out) {
+                    P = 0;
+                } else if (v >= cfg.cut_in && v <= cfg.rated) {
+                    const factor = (Math.pow(v, 3) - Math.pow(cfg.cut_in, 3)) /
+                        (Math.pow(cfg.rated, 3) - Math.pow(cfg.cut_in, 3));
+                    P = p_rated * factor;
+                } else {
+                    P = p_rated;
+                }
+                const denominator = 0.5 * RHO * AREA * Math.pow(v, 3);
+                let Cp = (denominator > 0) ? P / denominator : 0;
+                if (Cp > cfg.cp_max) Cp = cfg.cp_max;
+                return { P, Cp };
+            }
+
+            // --- Generate data kurva ---
+            const speeds = [];
+            const powHAWT = [],
+                cpHAWT = [];
+            const powVAWT = [],
+                cpVAWT = [];
+            for (let v = 0; v <= 30.1; v += 0.3) {
+                speeds.push(parseFloat(v.toFixed(2)));
+                const h = powerAndCp(v, HAWT, P_RATED_HAWT);
+                const vv = powerAndCp(v, VAWT, P_RATED_VAWT);
+                powHAWT.push(parseFloat(h.P.toFixed(2)));
+                cpHAWT.push(parseFloat(h.Cp.toFixed(4)));
+                powVAWT.push(parseFloat(vv.P.toFixed(2)));
+                cpVAWT.push(parseFloat(vv.Cp.toFixed(4)));
+            }
+
+            // --- Chart ---
+            const ctx = document.getElementById('powerChart').getContext('2d');
+            const chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: speeds,
+                    datasets: [{
+                        label: 'Daya HAWT (W)',
+                        data: powHAWT,
+                        borderColor: HAWT.color,
+                        backgroundColor: 'rgba(11,107,132,0.08)',
+                        borderWidth: 3,
+                        pointRadius: 0,
+                        tension: 0.4,
+                        fill: true,
+                        yAxisID: 'y',
+                        order: 1
+                    }, {
+                        label: 'Cp HAWT',
+                        data: cpHAWT,
+                        borderColor: HAWT.color,
+                        backgroundColor: 'rgba(11,107,132,0.02)',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.4,
+                        borderDash: [5, 5],
+                        yAxisID: 'y1',
+                        order: 0
+                    }, {
+                        label: 'Daya VAWT (W)',
+                        data: powVAWT,
+                        borderColor: VAWT.color,
+                        backgroundColor: 'rgba(184,90,26,0.08)',
+                        borderWidth: 3,
+                        pointRadius: 0,
+                        tension: 0.4,
+                        fill: true,
+                        yAxisID: 'y',
+                        order: 1
+                    }, {
+                        label: 'Cp VAWT',
+                        data: cpVAWT,
+                        borderColor: VAWT.color,
+                        backgroundColor: 'rgba(184,90,26,0.02)',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.4,
+                        borderDash: [5, 5],
+                        yAxisID: 'y1',
+                        order: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                usePointStyle: true,
+                                pointStyle: 'line',
+                                padding: 16,
+                                font: { size: 12, weight: '500' },
+                                color: '#08303d'
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    let val = context.parsed.y;
+                                    if (context.dataset.yAxisID === 'y') return label + ': ' + val.toFixed(1) +
+                                        ' W';
+                                    else return label + ': ' + val.toFixed(3);
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: { display: true, text: 'Kecepatan angin (m/s)', color: '#1f5a6b',
+                                font: { weight: '500' } },
+                            grid: { color: 'rgba(0,0,0,0.04)' },
+                            ticks: { stepSize: 2, color: '#1f5a6b' }
+                        },
+                        y: {
+                            position: 'left',
+                            title: { display: true, text: 'Daya (W)', color: '#0b6b84', font: { weight: '500' } },
+                            grid: { color: 'rgba(0,0,0,0.06)' },
+                            ticks: { color: '#0b6b84' },
+                            beginAtZero: true
+                        },
+                        y1: {
+                            position: 'right',
+                            title: { display: true, text: 'Cp', color: '#b85a1a', font: { weight: '500' } },
+                            grid: { drawOnChartArea: false },
+                            ticks: { color: '#b85a1a', stepSize: 0.1, max: 0.5 },
+                            min: 0,
+                            max: 0.5
+                        }
+                    },
+                    elements: { line: { borderJoinStyle: 'round' } }
+                }
+            });
+
+            // --- UI Elements ---
+            const slider = document.getElementById('windSlider');
+            const livePowerHAWT = document.getElementById('livePowerHAWT');
+            const liveCpHAWT = document.getElementById('liveCpHAWT');
+            const livePowerVAWT = document.getElementById('livePowerVAWT');
+            const liveCpVAWT = document.getElementById('liveCpVAWT');
+
+            function updateDisplay(v) {
+                const vNum = parseFloat(v);
+                const h = powerAndCp(vNum, HAWT, P_RATED_HAWT);
+                const vv = powerAndCp(vNum, VAWT, P_RATED_VAWT);
+
+                livePowerHAWT.innerHTML = h.P.toFixed(1) + ' <span class="unit">W</span>';
+                liveCpHAWT.textContent = h.Cp.toFixed(3);
+                livePowerVAWT.innerHTML = vv.P.toFixed(1) + ' <span class="unit">W</span>';
+                liveCpVAWT.textContent = vv.Cp.toFixed(3);
+
+                // Hapus marker sebelumnya
+                ['markerP_HAWT', 'markerCp_HAWT', 'markerP_VAWT', 'markerCp_VAWT'].forEach(id => {
+                    const ds = chart.data.datasets.find(d => d.id === id);
+                    if (ds) chart.data.datasets.splice(chart.data.datasets.indexOf(ds), 1);
+                });
+
+                if (vNum >= 0 && vNum <= 30) {
+                    const idx = chart.data.labels.findIndex(l => Math.abs(parseFloat(l) - vNum) < 0.05);
+                    if (idx !== -1) {
+                        // Marker HAWT Power
+                        chart.data.datasets.push({
+                            id: 'markerP_HAWT',
+                            label: '',
+                            data: powHAWT.map((d, i) => i === idx ? h.P : null),
+                            borderColor: HAWT.color,
+                            backgroundColor: HAWT.color,
+                            pointRadius: 7,
+                            pointHoverRadius: 9,
+                            showLine: false,
+                            yAxisID: 'y',
+                            pointStyle: 'circle',
+                            order: 2,
+                            pointBorderColor: 'white',
+                            pointBorderWidth: 2,
+                            showInLegend: false
+                        });
+                        // Marker HAWT Cp
+                        chart.data.datasets.push({
+                            id: 'markerCp_HAWT',
+                            label: '',
+                            data: cpHAWT.map((d, i) => i === idx ? h.Cp : null),
+                            borderColor: HAWT.color,
+                            backgroundColor: HAWT.color,
+                            pointRadius: 7,
+                            pointHoverRadius: 9,
+                            showLine: false,
+                            yAxisID: 'y1',
+                            pointStyle: 'rectRot',
+                            order: 2,
+                            pointBorderColor: 'white',
+                            pointBorderWidth: 2,
+                            showInLegend: false
+                        });
+                        // Marker VAWT Power
+                        chart.data.datasets.push({
+                            id: 'markerP_VAWT',
+                            label: '',
+                            data: powVAWT.map((d, i) => i === idx ? vv.P : null),
+                            borderColor: VAWT.color,
+                            backgroundColor: VAWT.color,
+                            pointRadius: 7,
+                            pointHoverRadius: 9,
+                            showLine: false,
+                            yAxisID: 'y',
+                            pointStyle: 'triangle',
+                            order: 2,
+                            pointBorderColor: 'white',
+                            pointBorderWidth: 2,
+                            showInLegend: false
+                        });
+                        // Marker VAWT Cp
+                        chart.data.datasets.push({
+                            id: 'markerCp_VAWT',
+                            label: '',
+                            data: cpVAWT.map((d, i) => i === idx ? vv.Cp : null),
+                            borderColor: VAWT.color,
+                            backgroundColor: VAWT.color,
+                            pointRadius: 7,
+                            pointHoverRadius: 9,
+                            showLine: false,
+                            yAxisID: 'y1',
+                            pointStyle: 'rect',
+                            order: 2,
+                            pointBorderColor: 'white',
+                            pointBorderWidth: 2,
+                            showInLegend: false
+                        });
+                    }
+                }
+                chart.update();
+            }
+
+            slider.addEventListener('input', function(e) {
+                updateDisplay(parseFloat(e.target.value));
+            });
+
+            // Inisialisasi
+            slider.value = '6';
+            updateDisplay(6);
+        })();
+    </script>
+</body>
+</html>
