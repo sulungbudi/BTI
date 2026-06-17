@@ -499,6 +499,7 @@
         const liveCpHAWT = document.getElementById('liveCpHAWT');
         const livePowerVAWT = document.getElementById('livePowerVAWT');
         const liveCpVAWT = document.getElementById('liveCpVAWT');
+        const liveWindSpeed = document.getElementById('liveWindSpeed');
 
         let myChart = null;
         let measuredData = []; // Array of {v, pHAWT, cpHAWT, pVAWT, cpVAWT}
@@ -593,6 +594,7 @@
             liveCpHAWT.textContent = h.Cp.toFixed(3);
             livePowerVAWT.innerHTML = vv.P.toFixed(1) + ' <span class="unit">W</span>';
             liveCpVAWT.textContent = vv.Cp.toFixed(3);
+            liveWindSpeed.textContent = vNum.toFixed(1) + ' m/s';
             // Simpan ke data pengukuran
             addMeasurement(vNum);
         }
