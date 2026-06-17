@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Simulator PLTB – Perbandingan HAWT vs VAWT</title>
-    <!-- Chart.js CDN -->
+    <title>Simulator PLTB – Pengukuran Acak vs Kurva Ideal</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js">
     </script>
     <style>
@@ -55,6 +54,17 @@
             margin-bottom: 25px;
             font-size: 1.05rem;
             font-weight: 400;
+        }
+        .sub .noise-badge {
+            background: #e65100;
+            color: white;
+            padding: 2px 14px;
+            border-radius: 30px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            margin-left: 8px;
+            display: inline-block;
         }
         .param-grid {
             display: grid;
@@ -114,6 +124,7 @@
             background: linear-gradient(to right, #7fc3db, #1d7b96);
             border-radius: 10px;
             outline: none;
+            cursor: pointer;
         }
         input[type="range"]::-webkit-slider-thumb {
             -webkit-appearance: none;
@@ -122,7 +133,7 @@
             background: #0d4b5e;
             border-radius: 50%;
             cursor: pointer;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
             border: 2px solid white;
             transition: 0.1s;
         }
@@ -171,15 +182,114 @@
         }
         .live-item.hawt .number { color: #0b6b84; }
         .live-item.vawt .number { color: #b85a1a; }
+
         .chart-container {
             position: relative;
-            height: 350px;
+            height: 380px;
             margin-top: 10px;
-            background: white;
+            background: #eaf3f8;
             border-radius: 28px;
-            padding: 15px 10px 5px 10px;
-            box-shadow: inset 0 2px 6px rgba(0,0,0,0.04);
             border: 1px solid #d6e8f0;
+            overflow: hidden;
+        }
+        #powerChart {
+            width: 100%;
+            height: 100%;
+            display: block;
+            background: white;
+            padding: 15px 10px 5px 10px;
+        }
+        #chartOverlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(8, 48, 61, 0.88);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border-radius: 28px;
+            z-index: 10;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            transition: opacity 0.4s ease;
+        }
+        #chartOverlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        #chartOverlay .lock-icon {
+            font-size: 3rem;
+            margin-bottom: 6px;
+        }
+        #chartOverlay h3 {
+            color: white;
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        #chartOverlay .instruction {
+            color: #c8dce6;
+            font-size: 0.95rem;
+            max-width: 440px;
+            margin-bottom: 12px;
+            line-height: 1.5;
+        }
+        #chartOverlay .instruction strong {
+            color: #ffd54f;
+        }
+        #chartOverlay .instruction .legend-dot {
+            display: inline-block;
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+        .pass-box {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-top: 4px;
+        }
+        .pass-box input {
+            padding: 10px 18px;
+            border-radius: 40px;
+            border: none;
+            width: 220px;
+            font-size: 1rem;
+            background: white;
+            color: #08303d;
+            outline: 2px solid transparent;
+            transition: 0.2s;
+        }
+        .pass-box input:focus {
+            outline: 2px solid #39a0c7;
+        }
+        .pass-box button {
+            padding: 10px 28px;
+            border-radius: 40px;
+            border: none;
+            background: #39a0c7;
+            color: white;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .pass-box button:hover {
+            background: #2a7f9e;
+            transform: scale(1.02);
+        }
+        #passError {
+            color: #ff8a80;
+            margin-top: 10px;
+            font-size: 0.9rem;
+            height: 24px;
+            font-weight: 500;
         }
         .footer-note {
             margin-top: 20px;
@@ -197,12 +307,22 @@
             font-weight: 500;
             color: #08303d;
         }
-        .legend-color {
-            display: inline-block;
-            width: 12px;
-            height: 12px;
-            border-radius: 4px;
-            margin-right: 4px;
+        .footer-note .badge {
+            background: #b85a1a;
+            color: white;
+            padding: 2px 14px;
+            border-radius: 30px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        .footer-note .noise-badge-footer {
+            background: #e65100;
+            color: white;
+            padding: 2px 14px;
+            border-radius: 30px;
+            font-size: 0.7rem;
+            font-weight: 600;
         }
         @media (max-width: 700px) {
             .card { padding: 20px; }
@@ -210,17 +330,70 @@
             .param-grid { grid-template-columns: 1fr; }
             .live-values { grid-template-columns: 1fr 1fr; }
             .live-item .number { font-size: 1.2rem; }
+            .pass-box input { width: 100%; }
         }
+
+/* ===== BACKGROUND GAMBAR UNTUK HAWT ===== */
+.param-col.hawt {
+    position: relative;
+    overflow: hidden;
+}
+.param-col.hawt::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url('https://media.wired.com/photos/63227cb600704d14b5ffb891/3:2/w_1920,c_limit/windturbines_Science_GettyImages-1203659530.jpg'); /* GANTI dengan URL gambar HAWT */
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    opacity: 0.2; /* Atur transparansi: 0.1 = sangat samar, 0.4 = cukup terang */
+    z-index: 0;
+    pointer-events: none;
+}
+.param-col.hawt > * {
+    position: relative;
+    z-index: 1;
+}
+
+/* ===== BACKGROUND GAMBAR UNTUK VAWT ===== */
+.param-col.vawt {
+    position: relative;
+    overflow: hidden;
+}
+.param-col.vawt::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url('https://www.windustry.com/image/vertical-axis-wind-turbines.jpg'); /* GANTI dengan URL gambar VAWT */
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    opacity: 0.2; /* Atur transparansi */
+    z-index: 0;
+    pointer-events: none;
+}
+.param-col.vawt > * {
+    position: relative;
+    z-index: 1;
+}
+
     </style>
 </head>
 <body>
     <div class="card">
         <h1>
             ⚡ Perbandingan PLTB
-            <small>HAWT vs VAWT</small>
+            <small>Pengukuran Acak vs Ideal</small>
         </h1>
         <div class="sub">
-            Geser slider untuk mengubah kecepatan angin — bandingkan kurva daya dan efisiensi (Cp) kedua turbin
+            Geser slider untuk melakukan <strong>pengukuran acak</strong> (nilai berubah setiap geser).
+            <span class="noise-badge">🎲 Random</span>
         </div>
 
         <!-- Parameter Turbin -->
@@ -245,10 +418,10 @@
             </div>
         </div>
 
-        <!-- Slider (tanpa label angka) -->
+        <!-- Slider -->
         <div class="slider-section">
             <label>
-                <span>Kecepatan angin <span class="hint">(geser untuk mengubah)</span></span>
+                <span>Kecepatan angin <span class="hint">(geser untuk melakukan pengukuran acak)</span></span>
             </label>
             <input type="range" id="windSlider" min="0" max="30" step="0.1" value="6" />
             <div class="slider-ticks">
@@ -258,153 +431,230 @@
             </div>
         </div>
 
-        <!-- Nilai Real-Time (tanpa kecepatan) -->
+        <!-- Nilai Real-Time (acak) -->
         <div class="live-values">
             <div class="live-item hawt">
-                <div class="label">⚡ Daya HAWT</div>
+                <div class="label">⚡ Daya HAWT (ukur)</div>
                 <div class="number" id="livePowerHAWT">0 <span class="unit">W</span></div>
             </div>
             <div class="live-item hawt">
-                <div class="label">Cp HAWT</div>
+                <div class="label">Cp HAWT (ukur)</div>
                 <div class="number" id="liveCpHAWT">0,00</div>
             </div>
             <div class="live-item vawt">
-                <div class="label">⚡ Daya VAWT</div>
+                <div class="label">⚡ Daya VAWT (ukur)</div>
                 <div class="number" id="livePowerVAWT">0 <span class="unit">W</span></div>
             </div>
             <div class="live-item vawt">
-                <div class="label">Cp VAWT</div>
+                <div class="label">Cp VAWT (ukur)</div>
                 <div class="number" id="liveCpVAWT">0,00</div>
             </div>
         </div>
 
-        <!-- Grafik -->
-        <div class="chart-container">
+        <!-- Grafik dengan Overlay -->
+        <div class="chart-container" id="chartContainer">
+            <div id="chartOverlay">
+                <div class="lock-icon">🔒</div>
+                <h3>Grafik Hasil Pengukuran Terkunci</h3>
+                <div class="instruction">
+                    <strong>Kumpulkan data pengukuran acak dengan menggeser slider.</strong><br />
+                    Setiap geser menghasilkan nilai baru — catat pasangan data Anda.
+                    <br /><br />
+                    Setelah selesai, masukkan password untuk melihat:<br />
+                    <span style="color:#0b6b84;">➖ Kurva ideal HAWT</span> &nbsp;|&nbsp; <span style="color:#b85a1a;">➖ Kurva ideal VAWT</span><br />
+                    <span class="legend-dot" style="color:#0b6b84;">➕</span> Daya ukur &nbsp; <span class="legend-dot" style="color:#0b6b84;">✖</span> Cp ukur (HAWT)<br />
+                    <span class="legend-dot" style="color:#b85a1a;">➕</span> Daya ukur &nbsp; <span class="legend-dot" style="color:#b85a1a;">✖</span> Cp ukur (VAWT)
+                </div>
+                <div class="pass-box">
+                    <input type="password" id="passwordInput" placeholder="Password" autofocus />
+                    <button id="unlockBtn">Buka Grafik</button>
+                </div>
+                <div id="passError"></div>
+            </div>
             <canvas id="powerChart"></canvas>
         </div>
 
         <div class="footer-note">
-            <span>⚙️ ρ = 1,225 kg/m³ • Luas sapuan sama (D=2m) • HAWT: Cp 0.45, VAWT: Cp 0.35</span>
+            <span>⚙️ ρ = 1,225 kg/m³ • D = 2m • HAWT Cp=0.45 • VAWT Cp=0.35</span>
             <span class="credit">© Janto V. Sulungbudi — FÜN (Fisika UNPAR)</span>
         </div>
     </div>
 
     <script>
-        (function() {
-            // --- Konfigurasi HAWT ---
-            const HAWT = {
-                cut_in: 3.0,
-                rated: 12.0,
-                cut_out: 25.0,
-                cp_max: 0.45,
-                color: '#0b6b84',
-                name: 'HAWT'
-            };
-            // --- Konfigurasi VAWT ---
-            const VAWT = {
-                cut_in: 2.5,
-                rated: 10.0,
-                cut_out: 22.0,
-                cp_max: 0.35,
-                color: '#b85a1a',
-                name: 'VAWT'
-            };
+        // ============================================================
+        //  🔑 PASSWORD (Ubah sesuai keinginan)
+        // ============================================================
+        const CORRECT_PASSWORD = "FisikaUNPAR";
+        // ============================================================
 
-            const DIAMETER = 2.0;
-            const AREA = Math.PI * Math.pow(DIAMETER / 2, 2);
-            const RHO = 1.225;
+        // --- Elemen DOM ---
+        const overlay = document.getElementById('chartOverlay');
+        const passwordInput = document.getElementById('passwordInput');
+        const unlockBtn = document.getElementById('unlockBtn');
+        const passError = document.getElementById('passError');
+        const slider = document.getElementById('windSlider');
+        const livePowerHAWT = document.getElementById('livePowerHAWT');
+        const liveCpHAWT = document.getElementById('liveCpHAWT');
+        const livePowerVAWT = document.getElementById('livePowerVAWT');
+        const liveCpVAWT = document.getElementById('liveCpVAWT');
 
-            // Hitung daya rated masing-masing
-            function calcRated(cfg) {
-                return 0.5 * RHO * AREA * Math.pow(cfg.rated, 3) * cfg.cp_max;
+        let myChart = null;
+        let measuredData = []; // Array of {v, pHAWT, cpHAWT, pVAWT, cpVAWT}
+
+        // --- Konfigurasi Turbin ---
+        const HAWT = { cut_in: 3.0, rated: 12.0, cut_out: 25.0, cp_max: 0.45, color: '#0b6b84', name: 'HAWT' };
+        const VAWT = { cut_in: 2.5, rated: 10.0, cut_out: 22.0, cp_max: 0.35, color: '#b85a1a', name: 'VAWT' };
+        const DIAMETER = 2.0;
+        const AREA = Math.PI * Math.pow(DIAMETER / 2, 2);
+        const RHO = 1.225;
+
+        // --- Fungsi Ideal (tanpa noise) ---
+        function idealPowerAndCp(v, cfg, p_rated) {
+            let P = 0;
+            if (v < cfg.cut_in || v > cfg.cut_out) {
+                P = 0;
+            } else if (v >= cfg.cut_in && v <= cfg.rated) {
+                const factor = (Math.pow(v, 3) - Math.pow(cfg.cut_in, 3)) /
+                    (Math.pow(cfg.rated, 3) - Math.pow(cfg.cut_in, 3));
+                P = p_rated * factor;
+            } else {
+                P = p_rated;
             }
-            const P_RATED_HAWT = calcRated(HAWT);
-            const P_RATED_VAWT = calcRated(VAWT);
-            document.getElementById('ratedHAWT').textContent = P_RATED_HAWT.toFixed(0) + ' W';
-            document.getElementById('ratedVAWT').textContent = P_RATED_VAWT.toFixed(0) + ' W';
+            const denominator = 0.5 * RHO * AREA * Math.pow(v, 3);
+            let Cp = (denominator > 0) ? P / denominator : 0;
+            if (Cp > cfg.cp_max) Cp = cfg.cp_max;
+            return { P, Cp };
+        }
 
-            // Fungsi daya & Cp untuk satu konfigurasi
-            function powerAndCp(v, cfg, p_rated) {
-                let P = 0;
-                if (v < cfg.cut_in || v > cfg.cut_out) {
-                    P = 0;
-                } else if (v >= cfg.cut_in && v <= cfg.rated) {
-                    const factor = (Math.pow(v, 3) - Math.pow(cfg.cut_in, 3)) /
-                        (Math.pow(cfg.rated, 3) - Math.pow(cfg.cut_in, 3));
-                    P = p_rated * factor;
-                } else {
-                    P = p_rated;
-                }
-                const denominator = 0.5 * RHO * AREA * Math.pow(v, 3);
-                let Cp = (denominator > 0) ? P / denominator : 0;
-                if (Cp > cfg.cp_max) Cp = cfg.cp_max;
-                return { P, Cp };
+        function calcRated(cfg) {
+            return 0.5 * RHO * AREA * Math.pow(cfg.rated, 3) * cfg.cp_max;
+        }
+        const P_RATED_HAWT = calcRated(HAWT);
+        const P_RATED_VAWT = calcRated(VAWT);
+        document.getElementById('ratedHAWT').textContent = P_RATED_HAWT.toFixed(0) + ' W';
+        document.getElementById('ratedVAWT').textContent = P_RATED_VAWT.toFixed(0) + ' W';
+
+        // --- Fungsi Pengukuran (dengan noise acak menggunakan Math.random) ---
+        function measuredPowerAndCp(v, cfg, p_rated) {
+            const ideal = idealPowerAndCp(v, cfg, p_rated);
+            let P_noisy = ideal.P;
+            let Cp_noisy = ideal.Cp;
+
+            // Tambahkan noise hanya jika turbin berproduksi
+            if (ideal.P > 0 && v >= 0) {
+                // Noise untuk Daya: std dev = 3% dari nilai ideal + 0.5 W
+                const stdP = 0.08 * ideal.P + 1;
+                // Box-Muller dengan Math.random()
+                const u1 = Math.random(),
+                    u2 = Math.random();
+                const zP = Math.sqrt(-2.0 * Math.log(u1 || 0.0001)) * Math.cos(2.0 * Math.PI * u2);
+                P_noisy = Math.max(0, ideal.P + zP * stdP);
+
+                // Noise untuk Cp: std dev = 0.05
+                const stdCp = 0.012;
+                const u3 = Math.random(),
+                    u4 = Math.random();
+                const zCp = Math.sqrt(-2.0 * Math.log(u3 || 0.0001)) * Math.cos(2.0 * Math.PI * u4);
+                Cp_noisy = Math.max(0, Math.min(cfg.cp_max, ideal.Cp + zCp * stdCp));
             }
+            return { P: P_noisy, Cp: Cp_noisy };
+        }
 
-            // --- Generate data kurva ---
-            const speeds = [];
-            const powHAWT = [],
-                cpHAWT = [];
-            const powVAWT = [],
-                cpVAWT = [];
+        // --- Update atau tambah data pengukuran ---
+        function addMeasurement(v) {
+            const h = measuredPowerAndCp(v, HAWT, P_RATED_HAWT);
+            const vv = measuredPowerAndCp(v, VAWT, P_RATED_VAWT);
+
+            const idx = measuredData.findIndex(d => Math.abs(d.v - v) < 0.01);
+            const entry = {
+                v: v,
+                pHAWT: h.P,
+                cpHAWT: h.Cp,
+                pVAWT: vv.P,
+                cpVAWT: vv.Cp
+            };
+            if (idx >= 0) {
+                measuredData[idx] = entry;
+            } else {
+                measuredData.push(entry);
+            }
+            // Sortir berdasarkan kecepatan agar grafik rapi
+            measuredData.sort((a, b) => a.v - b.v);
+            return entry;
+        }
+
+        // --- Update nilai live ---
+        function updateLiveValues(vNum) {
+            const h = measuredPowerAndCp(vNum, HAWT, P_RATED_HAWT);
+            const vv = measuredPowerAndCp(vNum, VAWT, P_RATED_VAWT);
+            livePowerHAWT.innerHTML = h.P.toFixed(1) + ' <span class="unit">W</span>';
+            liveCpHAWT.textContent = h.Cp.toFixed(3);
+            livePowerVAWT.innerHTML = vv.P.toFixed(1) + ' <span class="unit">W</span>';
+            liveCpVAWT.textContent = vv.Cp.toFixed(3);
+            // Simpan ke data pengukuran
+            addMeasurement(vNum);
+        }
+
+        // --- Inisialisasi Grafik (dipanggil setelah unlock) ---
+        function initChart() {
+            // Data kurva ideal
+            const idealData = [];
             for (let v = 0; v <= 30.1; v += 0.3) {
-                speeds.push(parseFloat(v.toFixed(2)));
-                const h = powerAndCp(v, HAWT, P_RATED_HAWT);
-                const vv = powerAndCp(v, VAWT, P_RATED_VAWT);
-                powHAWT.push(parseFloat(h.P.toFixed(2)));
-                cpHAWT.push(parseFloat(h.Cp.toFixed(4)));
-                powVAWT.push(parseFloat(vv.P.toFixed(2)));
-                cpVAWT.push(parseFloat(vv.Cp.toFixed(4)));
+                const h = idealPowerAndCp(v, HAWT, P_RATED_HAWT);
+                const vv = idealPowerAndCp(v, VAWT, P_RATED_VAWT);
+                idealData.push({
+                    v: parseFloat(v.toFixed(2)),
+                    pHAWT: h.P,
+                    cpHAWT: h.Cp,
+                    pVAWT: vv.P,
+                    cpVAWT: vv.Cp
+                });
             }
 
-            // --- Chart ---
             const ctx = document.getElementById('powerChart').getContext('2d');
-            const chart = new Chart(ctx, {
+            myChart = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: speeds,
                     datasets: [{
-                        label: 'Daya HAWT (W)',
-                        data: powHAWT,
+                        label: 'Ideal Daya HAWT',
+                        data: idealData.map(d => ({ x: d.v, y: d.pHAWT })),
                         borderColor: HAWT.color,
-                        backgroundColor: 'rgba(11,107,132,0.08)',
-                        borderWidth: 3,
+                        backgroundColor: 'rgba(11,107,132,0.06)',
+                        borderWidth: 2.5,
                         pointRadius: 0,
-                        tension: 0.4,
+                        tension: 0.3,
                         fill: true,
                         yAxisID: 'y',
                         order: 1
                     }, {
-                        label: 'Cp HAWT',
-                        data: cpHAWT,
+                        label: 'Ideal Cp HAWT',
+                        data: idealData.map(d => ({ x: d.v, y: d.cpHAWT })),
                         borderColor: HAWT.color,
-                        backgroundColor: 'rgba(11,107,132,0.02)',
                         borderWidth: 2,
                         pointRadius: 0,
-                        tension: 0.4,
-                        borderDash: [5, 5],
+                        tension: 0.3,
+                        borderDash: [6, 4],
                         yAxisID: 'y1',
                         order: 0
                     }, {
-                        label: 'Daya VAWT (W)',
-                        data: powVAWT,
+                        label: 'Ideal Daya VAWT',
+                        data: idealData.map(d => ({ x: d.v, y: d.pVAWT })),
                         borderColor: VAWT.color,
-                        backgroundColor: 'rgba(184,90,26,0.08)',
-                        borderWidth: 3,
+                        backgroundColor: 'rgba(184,90,26,0.06)',
+                        borderWidth: 2.5,
                         pointRadius: 0,
-                        tension: 0.4,
+                        tension: 0.3,
                         fill: true,
                         yAxisID: 'y',
                         order: 1
                     }, {
-                        label: 'Cp VAWT',
-                        data: cpVAWT,
+                        label: 'Ideal Cp VAWT',
+                        data: idealData.map(d => ({ x: d.v, y: d.cpVAWT })),
                         borderColor: VAWT.color,
-                        backgroundColor: 'rgba(184,90,26,0.02)',
                         borderWidth: 2,
                         pointRadius: 0,
-                        tension: 0.4,
-                        borderDash: [5, 5],
+                        tension: 0.3,
+                        borderDash: [6, 4],
                         yAxisID: 'y1',
                         order: 0
                     }]
@@ -412,14 +662,14 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    interaction: { mode: 'index', intersect: false },
+                    interaction: { mode: 'nearest', intersect: false },
                     plugins: {
                         legend: {
                             labels: {
                                 usePointStyle: true,
                                 pointStyle: 'line',
-                                padding: 16,
-                                font: { size: 12, weight: '500' },
+                                padding: 14,
+                                font: { size: 11, weight: '500' },
                                 color: '#08303d'
                             }
                         },
@@ -437,9 +687,12 @@
                     },
                     scales: {
                         x: {
+                            type: 'linear',
+                            min: 0,
+                            max: 30,
                             title: { display: true, text: 'Kecepatan angin (m/s)', color: '#1f5a6b',
                                 font: { weight: '500' } },
-                            grid: { color: 'rgba(0,0,0,0.04)' },
+                            grid: { color: 'rgba(0,0,0,0.05)' },
                             ticks: { stepSize: 2, color: '#1f5a6b' }
                         },
                         y: {
@@ -462,113 +715,129 @@
                 }
             });
 
-            // --- UI Elements ---
-            const slider = document.getElementById('windSlider');
-            const livePowerHAWT = document.getElementById('livePowerHAWT');
-            const liveCpHAWT = document.getElementById('liveCpHAWT');
-            const livePowerVAWT = document.getElementById('livePowerVAWT');
-            const liveCpVAWT = document.getElementById('liveCpVAWT');
+            // Tambahkan data pengukuran yang sudah terkumpul
+            updateScatterData();
+        }
 
-            function updateDisplay(v) {
-                const vNum = parseFloat(v);
-                const h = powerAndCp(vNum, HAWT, P_RATED_HAWT);
-                const vv = powerAndCp(vNum, VAWT, P_RATED_VAWT);
+        // --- Update Scatter Data Pengukuran ---
+        function updateScatterData() {
+            if (!myChart) return;
 
-                livePowerHAWT.innerHTML = h.P.toFixed(1) + ' <span class="unit">W</span>';
-                liveCpHAWT.textContent = h.Cp.toFixed(3);
-                livePowerVAWT.innerHTML = vv.P.toFixed(1) + ' <span class="unit">W</span>';
-                liveCpVAWT.textContent = vv.Cp.toFixed(3);
-
-                // Hapus marker sebelumnya
-                ['markerP_HAWT', 'markerCp_HAWT', 'markerP_VAWT', 'markerCp_VAWT'].forEach(id => {
-                    const ds = chart.data.datasets.find(d => d.id === id);
-                    if (ds) chart.data.datasets.splice(chart.data.datasets.indexOf(ds), 1);
-                });
-
-                if (vNum >= 0 && vNum <= 30) {
-                    const idx = chart.data.labels.findIndex(l => Math.abs(parseFloat(l) - vNum) < 0.05);
-                    if (idx !== -1) {
-                        // Marker HAWT Power
-                        chart.data.datasets.push({
-                            id: 'markerP_HAWT',
-                            label: '',
-                            data: powHAWT.map((d, i) => i === idx ? h.P : null),
-                            borderColor: HAWT.color,
-                            backgroundColor: HAWT.color,
-                            pointRadius: 7,
-                            pointHoverRadius: 9,
-                            showLine: false,
-                            yAxisID: 'y',
-                            pointStyle: 'circle',
-                            order: 2,
-                            pointBorderColor: 'white',
-                            pointBorderWidth: 2,
-                            showInLegend: false
-                        });
-                        // Marker HAWT Cp
-                        chart.data.datasets.push({
-                            id: 'markerCp_HAWT',
-                            label: '',
-                            data: cpHAWT.map((d, i) => i === idx ? h.Cp : null),
-                            borderColor: HAWT.color,
-                            backgroundColor: HAWT.color,
-                            pointRadius: 7,
-                            pointHoverRadius: 9,
-                            showLine: false,
-                            yAxisID: 'y1',
-                            pointStyle: 'rectRot',
-                            order: 2,
-                            pointBorderColor: 'white',
-                            pointBorderWidth: 2,
-                            showInLegend: false
-                        });
-                        // Marker VAWT Power
-                        chart.data.datasets.push({
-                            id: 'markerP_VAWT',
-                            label: '',
-                            data: powVAWT.map((d, i) => i === idx ? vv.P : null),
-                            borderColor: VAWT.color,
-                            backgroundColor: VAWT.color,
-                            pointRadius: 7,
-                            pointHoverRadius: 9,
-                            showLine: false,
-                            yAxisID: 'y',
-                            pointStyle: 'triangle',
-                            order: 2,
-                            pointBorderColor: 'white',
-                            pointBorderWidth: 2,
-                            showInLegend: false
-                        });
-                        // Marker VAWT Cp
-                        chart.data.datasets.push({
-                            id: 'markerCp_VAWT',
-                            label: '',
-                            data: cpVAWT.map((d, i) => i === idx ? vv.Cp : null),
-                            borderColor: VAWT.color,
-                            backgroundColor: VAWT.color,
-                            pointRadius: 7,
-                            pointHoverRadius: 9,
-                            showLine: false,
-                            yAxisID: 'y1',
-                            pointStyle: 'rect',
-                            order: 2,
-                            pointBorderColor: 'white',
-                            pointBorderWidth: 2,
-                            showInLegend: false
-                        });
-                    }
-                }
-                chart.update();
-            }
-
-            slider.addEventListener('input', function(e) {
-                updateDisplay(parseFloat(e.target.value));
+            // Hapus dataset scatter sebelumnya
+            const scatterIds = ['scatter_pHAWT', 'scatter_cpHAWT', 'scatter_pVAWT', 'scatter_cpVAWT'];
+            scatterIds.forEach(id => {
+                const ds = myChart.data.datasets.find(d => d.id === id);
+                if (ds) myChart.data.datasets.splice(myChart.data.datasets.indexOf(ds), 1);
             });
 
-            // Inisialisasi
-            slider.value = '6';
-            updateDisplay(6);
-        })();
+            if (measuredData.length === 0) {
+                myChart.update();
+                return;
+            }
+
+            // Siapkan data
+            const dataP_HAWT = measuredData.map(d => ({ x: d.v, y: d.pHAWT }));
+            const dataCp_HAWT = measuredData.map(d => ({ x: d.v, y: d.cpHAWT }));
+            const dataP_VAWT = measuredData.map(d => ({ x: d.v, y: d.pVAWT }));
+            const dataCp_VAWT = measuredData.map(d => ({ x: d.v, y: d.cpVAWT }));
+
+            // Dataset Daya HAWT (+)
+            myChart.data.datasets.push({
+                id: 'scatter_pHAWT',
+                label: 'Ukur Daya HAWT',
+                data: dataP_HAWT,
+                borderColor: HAWT.color,
+                backgroundColor: HAWT.color,
+                pointStyle: 'cross',
+                pointRadius: 6,
+                pointBorderWidth: 2.5,
+                showLine: false,
+                yAxisID: 'y',
+                order: 2
+            });
+            // Dataset Cp HAWT (X)
+            myChart.data.datasets.push({
+                id: 'scatter_cpHAWT',
+                label: 'Ukur Cp HAWT',
+                data: dataCp_HAWT,
+                borderColor: HAWT.color,
+                backgroundColor: HAWT.color,
+                pointStyle: 'star',
+                pointRadius: 4,
+                pointBorderWidth: 1.5,
+                showLine: false,
+                yAxisID: 'y1',
+                order: 2
+            });
+            // Dataset Daya VAWT (+)
+            myChart.data.datasets.push({
+                id: 'scatter_pVAWT',
+                label: 'Ukur Daya VAWT',
+                data: dataP_VAWT,
+                borderColor: VAWT.color,
+                backgroundColor: VAWT.color,
+                pointStyle: 'cross',
+                pointRadius: 6,
+                pointBorderWidth: 2.5,
+                showLine: false,
+                yAxisID: 'y',
+                order: 2
+            });
+            // Dataset Cp VAWT (X)
+            myChart.data.datasets.push({
+                id: 'scatter_cpVAWT',
+                label: 'Ukur Cp VAWT',
+                data: dataCp_VAWT,
+                borderColor: VAWT.color,
+                backgroundColor: VAWT.color,
+                pointStyle: 'star',
+                pointRadius: 4,
+                pointBorderWidth: 1.5,
+                showLine: false,
+                yAxisID: 'y1',
+                order: 2
+            });
+
+            myChart.update();
+        }
+
+        // --- Unlock ---
+        function tryUnlock() {
+            const inputPass = passwordInput.value.trim();
+            if (inputPass === CORRECT_PASSWORD) {
+                passError.textContent = '';
+                overlay.classList.add('hidden');
+                if (!myChart) {
+                    initChart();
+                } else {
+                    updateScatterData();
+                }
+            } else {
+                passError.textContent = '❌ Password salah. Silakan coba lagi.';
+                passwordInput.value = '';
+                passwordInput.focus();
+            }
+        }
+
+        // --- Event Listeners ---
+        unlockBtn.addEventListener('click', tryUnlock);
+        passwordInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') tryUnlock();
+        });
+
+        slider.addEventListener('input', function(e) {
+            const val = parseFloat(e.target.value);
+            updateLiveValues(val);
+            // Jika grafik sudah terbuka, update scatter
+            if (myChart) {
+                updateScatterData();
+            }
+        });
+
+        // --- Inisialisasi ---
+        // Lakukan pengukuran awal
+        updateLiveValues(6);
+        passwordInput.focus();
     </script>
 </body>
 </html>
