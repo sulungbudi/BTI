@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Simulator Fuel Cell – Eksperimen Karakteristik</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js">
+    </script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+            background: linear-gradient(145deg, #f0f7fa 0%, #dceaf0 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .card {
+            max-width: 1200px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.88);
+            backdrop-filter: blur(8px);
+            border-radius: 40px;
+            padding: 30px 35px;
+            box-shadow: 0 25px 50px -10px rgba(0, 40, 60, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+        h1 {
+            font-size: 2.2rem;
+            font-weight: 600;
+            color: #0b3b4a;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 6px;
+        }
+        h1 small {
+            font-size: 1rem;
+            font-weight: 400;
+            color: #2a6b7c;
+            margin-left: auto;
+        }
+        .sub {
+            color: #1f5a6b;
+            border-left: 4px solid #39a0c7;
+            padding-left: 16px;
+            margin-bottom: 25px;
+            font-size: 1.05rem;
+            font-weight: 400;
+        }
+        .sub .noise-badge {
+            background: #e65100;
+            color: white;
+            padding: 2px 14px;
+            border-radius: 30px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            margin-left: 8px;
+            display: inline-block;
+        }
+        .param-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px 18px;
+            background: #e6f3f9;
+            padding: 18px 22px;
+            border-radius: 28px;
+            margin-bottom: 28px;
+            border: 1px solid #c2dde9;
+        }
+        .param-col {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .param-col .title {
+            font-weight: 700;
+            font-size: 1rem;
+            border-bottom: 2px solid;
+            padding-bottom: 4px;
+            margin-bottom: 6px;
+        }
+        .param-col.pem .title { color: #0b6b84; border-color: #0b6b84; }
+        .param-col.sofc .title { color: #b85a1a; border-color: #b85a1a; }
+        .param-item {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            padding: 2px 0;
+        }
+        .param-item .label { color: #1f5a6b; }
+        .param-item .value { font-weight: 600; color: #08303d; }
+        .slider-section {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 20px;
+        }
+        .slider-section label {
+            font-weight: 600;
+            color: #0b3b4a;
+            font-size: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .slider-section label .hint {
+            font-weight: 400;
+            color: #2a6b7c;
+            font-size: 0.85rem;
+        }
+        input[type="range"] {
+            width: 100%;
+            height: 8px;
+            -webkit-appearance: none;
+            background: linear-gradient(to right, #7fc3db, #1d7b96);
+            border-radius: 10px;
+            outline: none;
+            cursor: pointer;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 22px;
+            height: 22px;
+            background: #0d4b5e;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            border: 2px solid white;
+            transition: 0.1s;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+        }
+        .slider-ticks {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.65rem;
+            color: #1d5a6b;
+            padding: 0 6px;
+            margin-top: -2px;
+        }
+        .live-values {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr;
+            gap: 10px;
+            background: #d7eaf3;
+            border-radius: 30px;
+            padding: 14px 18px;
+            margin: 8px 0 22px 0;
+            border: 1px solid #b7d3e0;
+        }
+        .live-item {
+            text-align: center;
+        }
+        .live-item .label {
+            font-size: 0.7rem;
+            color: #1a5366;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            font-weight: 600;
+        }
+        .live-item .number {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #022b39;
+            line-height: 1.2;
+        }
+        .live-item .unit {
+            font-size: 0.8rem;
+            font-weight: 400;
+            color: #1f5a6b;
+            margin-left: 4px;
+        }
+        .live-item.pem .number { color: #0b6b84; }
+        .live-item.sofc .number { color: #b85a1a; }
+
+        .chart-container {
+            position: relative;
+            height: 380px;
+            margin-top: 10px;
+            background: #eaf3f8;
+            border-radius: 28px;
+            border: 1px solid #d6e8f0;
+            overflow: hidden;
+        }
+        #powerChart {
+            width: 100%;
+            height: 100%;
+            display: block;
+            background: white;
+            padding: 15px 10px 5px 10px;
+        }
+        #chartOverlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(8, 48, 61, 0.88);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border-radius: 28px;
+            z-index: 10;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            transition: opacity 0.4s ease;
+        }
+        #chartOverlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        #chartOverlay .lock-icon {
+            font-size: 3rem;
+            margin-bottom: 6px;
+        }
+        #chartOverlay h3 {
+            color: white;
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        #chartOverlay .instruction {
+            color: #c8dce6;
+            font-size: 0.95rem;
+            max-width: 440px;
+            margin-bottom: 12px;
+            line-height: 1.5;
+        }
+        #chartOverlay .instruction strong {
+            color: #ffd54f;
+        }
+        #chartOverlay .instruction .legend-dot {
+            display: inline-block;
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+        .pass-box {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-top: 4px;
+        }
+        .pass-box input {
+            padding: 10px 18px;
+            border-radius: 40px;
+            border: none;
+            width: 220px;
+            font-size: 1rem;
+            background: white;
+            color: #08303d;
+            outline: 2px solid transparent;
+            transition: 0.2s;
+        }
+        .pass-box input:focus {
+            outline: 2px solid #39a0c7;
+        }
+        .pass-box button {
+            padding: 10px 28px;
+            border-radius: 40px;
+            border: none;
+            background: #39a0c7;
+            color: white;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .pass-box button:hover {
+            background: #2a7f9e;
+            transform: scale(1.02);
+        }
+        #passError {
+            color: #ff8a80;
+            margin-top: 10px;
+            font-size: 0.9rem;
+            height: 24px;
+            font-weight: 500;
+        }
+        .footer-note {
+            margin-top: 20px;
+            font-size: 0.85rem;
+            color: #1f5a6b;
+            text-align: center;
+            border-top: 1px solid #bed7e4;
+            padding-top: 16px;
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .footer-note .credit {
+            font-weight: 500;
+            color: #08303d;
+        }
+        .footer-note .badge {
+            background: #b85a1a;
+            color: white;
+            padding: 2px 14px;
+            border-radius: 30px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        .footer-note .noise-badge-footer {
+            background: #e65100;
+            color: white;
+            padding: 2px 14px;
+            border-radius: 30px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+        @media (max-width: 700px) {
+            .card { padding: 20px; }
+            h1 { font-size: 1.6rem; }
+            .param-grid { grid-template-columns: 1fr; }
+            .live-values { grid-template-columns: 1fr 1fr; }
+            .live-item .number { font-size: 1.2rem; }
+            .pass-box input { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>
+            ⚡ Simulator Fuel Cell
+            <small>PEMFC vs SOFC</small>
+        </h1>
+        <div class="sub">
+            Geser slider untuk melakukan <strong>pengukuran karakteristik</strong> (nilai berubah setiap geser).
+            <span class="noise-badge">🎲 Random</span>
+        </div>
+
+        <!-- Parameter Fuel Cell -->
+        <div class="param-grid">
+            <div class="param-col pem">
+                <div class="title">🔵 PEMFC (Proton Exchange Membrane)</div>
+                <div class="param-item"><span class="label">Temperatur operasi</span><span class="value">60-80 °C</span></div>
+                <div class="param-item"><span class="label">Tegangan open circuit (Voc)</span><span class="value">1,23 V</span></div>
+                <div class="param-item"><span class="label">Tegangan nominal</span><span class="value">0,60 V</span></div>
+                <div class="param-item"><span class="label">Arus maksimum</span><span class="value" id="imaxPEM">2,50 A</span></div>
+                <div class="param-item"><span class="label">Daya maksimum</span><span class="value" id="pmaxPEM">1.20 W</span></div>
+                <div class="param-item"><span class="label">Efisiensi maksimum</span><span class="value">45-55%</span></div>
+            </div>
+            <div class="param-col sofc">
+                <div class="title">🟠 SOFC (Solid Oxide)</div>
+                <div class="param-item"><span class="label">Temperatur operasi</span><span class="value">600-1000 °C</span></div>
+                <div class="param-item"><span class="label">Tegangan open circuit (Voc)</span><span class="value">1,10 V</span></div>
+                <div class="param-item"><span class="label">Tegangan nominal</span><span class="value">0,55 V</span></div>
+                <div class="param-item"><span class="label">Arus maksimum</span><span class="value" id="imaxSOFC">3,00 A</span></div>
+                <div class="param-item"><span class="label">Daya maksimum</span><span class="value" id="pmaxSOFC">1.50 W</span></div>
+                <div class="param-item"><span class="label">Efisiensi maksimum</span><span class="value">60-80%</span></div>
+            </div>
+        </div>
+
+        <!-- Slider -->
+        <div class="slider-section">
+            <label>
+                <span>Arus beban <span class="hint">(geser untuk melakukan pengukuran)</span></span>
+                <span id="liveCurrent" style="font-weight:700; font-size:1.2rem; color:#08303d; background:#e6f3f9; padding:2px 18px; border-radius:30px; border:1px solid #c2dde9;">0.00 A</span>
+            </label>
+            <input type="range" id="currentSlider" min="0" max="100" step="0.5" value="20" />
+            <div class="slider-ticks">
+                <span>0 A</span> <span>0,5 A</span> <span>1,0 A</span>
+                <span>1,5 A</span> <span>2,0 A</span>
+                <span>2,5 A</span> <span>3,0 A</span>
+            </div>
+        </div>
+
+        <!-- Nilai Real-Time (acak) -->
+        <div class="live-values">
+            <div class="live-item pem">
+                <div class="label">⚡ Tegangan PEMFC</div>
+                <div class="number" id="liveVoltagePEM">0.00 <span class="unit">V</span></div>
+            </div>
+            <div class="live-item pem">
+                <div class="label">Daya PEMFC</div>
+                <div class="number" id="livePowerPEM">0.00 <span class="unit">W</span></div>
+            </div>
+            <div class="live-item sofc">
+                <div class="label">⚡ Tegangan SOFC</div>
+                <div class="number" id="liveVoltageSOFC">0.00 <span class="unit">V</span></div>
+            </div>
+            <div class="live-item sofc">
+                <div class="label">Daya SOFC</div>
+                <div class="number" id="livePowerSOFC">0.00 <span class="unit">W</span></div>
+            </div>
+        </div>
+
+        <!-- Grafik dengan Overlay -->
+        <div class="chart-container" id="chartContainer">
+            <div id="chartOverlay">
+                <div class="lock-icon">🔒</div>
+                <h3>Grafik Karakteristik Terkunci</h3>
+                <div class="instruction">
+                    <strong>Kumpulkan data pengukuran dengan menggeser slider arus.</strong><br />
+                    Setiap geser menghasilkan nilai baru — catat pasangan data Anda (I, V, P).
+                    <br /><br />
+                    Setelah selesai, masukkan password untuk melihat:<br />
+                    <span style="color:#0b6b84;">➖ Kurva ideal PEMFC</span> &nbsp;|&nbsp; <span style="color:#b85a1a;">➖ Kurva ideal SOFC</span><br />
+                    <span class="legend-dot" style="color:#0b6b84;">➕</span> V ukur &nbsp; <span class="legend-dot" style="color:#0b6b84;">✖</span> P ukur (PEMFC)<br />
+                    <span class="legend-dot" style="color:#b85a1a;">➕</span> V ukur &nbsp; <span class="legend-dot" style="color:#b85a1a;">✖</span> P ukur (SOFC)
+                </div>
+                <div class="pass-box">
+                    <input type="password" id="passwordInput" placeholder="Password" autofocus />
+                    <button id="unlockBtn">Buka Grafik</button>
+                </div>
+                <div id="passError"></div>
+            </div>
+            <canvas id="powerChart"></canvas>
+        </div>
+
+        <div class="footer-note">
+            <span>⚙️ Model polarisasi fuel cell dengan losses (aktivasi, ohmik, konsentrasi)</span>
+            <span class="credit">© Janto V. Sulungbudi — FÜN (Fisika UNPAR)</span>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================
+        //  🔑 PASSWORD (Ubah sesuai keinginan)
+        // ============================================================
+        const CORRECT_PASSWORD = "FisikaUNPAR";
+        // ============================================================
+
+        // --- Elemen DOM ---
+        const overlay = document.getElementById('chartOverlay');
+        const passwordInput = document.getElementById('passwordInput');
+        const unlockBtn = document.getElementById('unlockBtn');
+        const passError = document.getElementById('passError');
+        const slider = document.getElementById('currentSlider');
+        const liveCurrent = document.getElementById('liveCurrent');
+        const liveVoltagePEM = document.getElementById('liveVoltagePEM');
+        const livePowerPEM = document.getElementById('livePowerPEM');
+        const liveVoltageSOFC = document.getElementById('liveVoltageSOFC');
+        const livePowerSOFC = document.getElementById('livePowerSOFC');
+
+        let myChart = null;
+        let measuredData = []; // Array of {I, vPEM, pPEM, vSOFC, pSOFC}
+
+        // --- Konfigurasi Fuel Cell ---
+        // PEMFC: Voc=1.23V, Vnom=0.6V, Imax=2.5A
+        // SOFC: Voc=1.10V, Vnom=0.55V, Imax=3.0A
+        const PEM = {
+            voc: 1.23,
+            vnom: 0.60,
+            imax: 2.50,
+            color: '#0b6b84',
+            name: 'PEMFC'
+        };
+        const SOFC = {
+            voc: 1.10,
+            vnom: 0.55,
+            imax: 3.00,
+            color: '#b85a1a',
+            name: 'SOFC'
+        };
+
+        // --- Fungsi Ideal (tanpa noise) ---
+        // Model polarisasi fuel cell: V = Voc - losses
+        // Losses: aktivasi + ohmik + konsentrasi
+        function idealVoltage(I, cfg) {
+            if (I < 0) I = 0;
+            // Arus dalam A, skala 0 sampai imax
+            const Imax = cfg.imax;
+
+            // Polarization losses (model sederhana)
+            // 1. Activation loss: nonlinear di arus rendah
+            const actLoss = 0.15 * Math.log(I * 10 + 1) / Math.log(11);
+
+            // 2. Ohmic loss: linear
+            const ohmLoss = 0.08 * I;
+
+            // 3. Concentration loss: naik tajam mendekati Imax
+            let concLoss = 0;
+            if (I > 0.7 * Imax) {
+                const ratio = (I - 0.7 * Imax) / (0.3 * Imax);
+                concLoss = 0.3 * Math.pow(ratio, 2);
+            }
+
+            const V = cfg.voc - actLoss - ohmLoss - concLoss;
+            return Math.max(0, V);
+        }
+
+        function idealPower(I, cfg) {
+            const V = idealVoltage(I, cfg);
+            return I * V;
+        }
+
+        // --- Fungsi Pengukuran (dengan noise acak) ---
+        function measuredValues(I, cfg) {
+            const V_ideal = idealVoltage(I, cfg);
+            const P_ideal = I * V_ideal;
+
+            let V_noisy = V_ideal;
+            let P_noisy = P_ideal;
+
+            if (I > 0.01 && V_ideal > 0.01) {
+                // Noise untuk Tegangan: std dev ~0.015 V
+                const stdV = 0.015 + 0.01 * (I / cfg.imax);
+                const u1 = Math.random(),
+                    u2 = Math.random();
+                const zV = Math.sqrt(-2.0 * Math.log(u1 || 0.0001)) * Math.cos(2.0 * Math.PI * u2);
+                V_noisy = Math.max(0, V_ideal + zV * stdV);
+
+                // Noise untuk Daya: std dev ~3% + 0.02 W
+                const stdP = 0.03 * P_ideal + 0.02;
+                const u3 = Math.random(),
+                    u4 = Math.random();
+                const zP = Math.sqrt(-2.0 * Math.log(u3 || 0.0001)) * Math.cos(2.0 * Math.PI * u4);
+                P_noisy = Math.max(0, P_ideal + zP * stdP);
+            }
+
+            return { V: V_noisy, P: P_noisy };
+        }
+
+        // --- Update atau tambah data pengukuran ---
+        function addMeasurement(I) {
+            const pem = measuredValues(I, PEM);
+            const sofc = measuredValues(I, SOFC);
+
+            const idx = measuredData.findIndex(d => Math.abs(d.I - I) < 0.01);
+            const entry = {
+                I: I,
+                vPEM: pem.V,
+                pPEM: pem.P,
+                vSOFC: sofc.V,
+                pSOFC: sofc.P
+            };
+            if (idx >= 0) {
+                measuredData[idx] = entry;
+            } else {
+                measuredData.push(entry);
+            }
+            measuredData.sort((a, b) => a.I - b.I);
+            return entry;
+        }
+
+        // --- Update nilai live ---
+        function updateLiveValues(I) {
+            const pem = measuredValues(I, PEM);
+            const sofc = measuredValues(I, SOFC);
+            liveCurrent.textContent = I.toFixed(2) + ' A';
+            liveVoltagePEM.innerHTML = pem.V.toFixed(3) + ' <span class="unit">V</span>';
+            livePowerPEM.innerHTML = pem.P.toFixed(3) + ' <span class="unit">W</span>';
+            liveVoltageSOFC.innerHTML = sofc.V.toFixed(3) + ' <span class="unit">V</span>';
+            livePowerSOFC.innerHTML = sofc.P.toFixed(3) + ' <span class="unit">W</span>';
+            addMeasurement(I);
+        }
+
+        // --- Inisialisasi Grafik (dipanggil setelah unlock) ---
+        function initChart() {
+            // Data kurva ideal (resolusi tinggi)
+            const idealData = [];
+            const steps = 200;
+            for (let i = 0; i <= steps; i++) {
+                const I = (i / steps) * 3.2; // 0 - 3.2 A
+                const vP = idealVoltage(I, PEM);
+                const pP = idealPower(I, PEM);
+                const vS = idealVoltage(I, SOFC);
+                const pS = idealPower(I, SOFC);
+                idealData.push({
+                    I: I,
+                    vPEM: vP,
+                    pPEM: pP,
+                    vSOFC: vS,
+                    pSOFC: pS
+                });
+            }
+
+            const ctx = document.getElementById('powerChart').getContext('2d');
+            myChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: [{
+                        label: 'V PEMFC (ideal)',
+                        data: idealData.map(d => ({ x: d.I, y: d.vPEM })),
+                        borderColor: PEM.color,
+                        borderWidth: 2.5,
+                        pointRadius: 0,
+                        tension: 0.3,
+                        yAxisID: 'y',
+                        order: 1
+                    }, {
+                        label: 'P PEMFC (ideal)',
+                        data: idealData.map(d => ({ x: d.I, y: d.pPEM })),
+                        borderColor: PEM.color,
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.3,
+                        borderDash: [6, 4],
+                        yAxisID: 'y1',
+                        order: 0
+                    }, {
+                        label: 'V SOFC (ideal)',
+                        data: idealData.map(d => ({ x: d.I, y: d.vSOFC })),
+                        borderColor: SOFC.color,
+                        borderWidth: 2.5,
+                        pointRadius: 0,
+                        tension: 0.3,
+                        yAxisID: 'y',
+                        order: 1
+                    }, {
+                        label: 'P SOFC (ideal)',
+                        data: idealData.map(d => ({ x: d.I, y: d.pSOFC })),
+                        borderColor: SOFC.color,
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.3,
+                        borderDash: [6, 4],
+                        yAxisID: 'y1',
+                        order: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'nearest', intersect: false },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                usePointStyle: true,
+                                pointStyle: 'line',
+                                padding: 14,
+                                font: { size: 11, weight: '500' },
+                                color: '#08303d'
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    let val = context.parsed.y;
+                                    if (context.dataset.yAxisID === 'y') return label + ': ' + val.toFixed(3) +
+                                        ' V';
+                                    else return label + ': ' + val.toFixed(3) + ' W';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            min: 0,
+                            max: 3.2,
+                            title: { display: true, text: 'Arus (A)', color: '#1f5a6b',
+                            font: { weight: '500' } },
+                            grid: { color: 'rgba(0,0,0,0.05)' },
+                            ticks: { stepSize: 0.5, color: '#1f5a6b' }
+                        },
+                        y: {
+                            position: 'left',
+                            title: { display: true, text: 'Tegangan (V)', color: '#0b6b84',
+                            font: { weight: '500' } },
+                            grid: { color: 'rgba(0,0,0,0.06)' },
+                            ticks: { color: '#0b6b84' },
+                            beginAtZero: true,
+                            max: 1.4
+                        },
+                        y1: {
+                            position: 'right',
+                            title: { display: true, text: 'Daya (W)', color: '#b85a1a',
+                            font: { weight: '500' } },
+                            grid: { drawOnChartArea: false },
+                            ticks: { color: '#b85a1a', stepSize: 0.5 },
+                            min: 0,
+                            max: 2.0
+                        }
+                    },
+                    elements: { line: { borderJoinStyle: 'round' } }
+                }
+            });
+
+            updateScatterData();
+        }
+
+        // --- Update Scatter Data Pengukuran ---
+        function updateScatterData() {
+            if (!myChart) return;
+
+            const scatterIds = ['scatter_vPEM', 'scatter_pPEM', 'scatter_vSOFC', 'scatter_pSOFC'];
+            scatterIds.forEach(id => {
+                const ds = myChart.data.datasets.find(d => d.id === id);
+                if (ds) myChart.data.datasets.splice(myChart.data.datasets.indexOf(ds), 1);
+            });
+
+            if (measuredData.length === 0) {
+                myChart.update();
+                return;
+            }
+
+            const dataV_PEM = measuredData.map(d => ({ x: d.I, y: d.vPEM }));
+            const dataP_PEM = measuredData.map(d => ({ x: d.I, y: d.pPEM }));
+            const dataV_SOFC = measuredData.map(d => ({ x: d.I, y: d.vSOFC }));
+            const dataP_SOFC = measuredData.map(d => ({ x: d.I, y: d.pSOFC }));
+
+            // Dataset V PEM (+)
+            myChart.data.datasets.push({
+                id: 'scatter_vPEM',
+                label: 'V ukur PEMFC',
+                data: dataV_PEM,
+                borderColor: PEM.color,
+                backgroundColor: PEM.color,
+                pointStyle: 'cross',
+                pointRadius: 6,
+                pointBorderWidth: 2.5,
+                showLine: false,
+                yAxisID: 'y',
+                order: 2
+            });
+            // Dataset P PEM (X)
+            myChart.data.datasets.push({
+                id: 'scatter_pPEM',
+                label: 'P ukur PEMFC',
+                data: dataP_PEM,
+                borderColor: PEM.color,
+                backgroundColor: PEM.color,
+                pointStyle: 'x',
+                pointRadius: 6,
+                pointBorderWidth: 2.5,
+                showLine: false,
+                yAxisID: 'y1',
+                order: 2
+            });
+            // Dataset V SOFC (+)
+            myChart.data.datasets.push({
+                id: 'scatter_vSOFC',
+                label: 'V ukur SOFC',
+                data: dataV_SOFC,
+                borderColor: SOFC.color,
+                backgroundColor: SOFC.color,
+                pointStyle: 'cross',
+                pointRadius: 6,
+                pointBorderWidth: 2.5,
+                showLine: false,
+                yAxisID: 'y',
+                order: 2
+            });
+            // Dataset P SOFC (X)
+            myChart.data.datasets.push({
+                id: 'scatter_pSOFC',
+                label: 'P ukur SOFC',
+                data: dataP_SOFC,
+                borderColor: SOFC.color,
+                backgroundColor: SOFC.color,
+                pointStyle: 'x',
+                pointRadius: 6,
+                pointBorderWidth: 2.5,
+                showLine: false,
+                yAxisID: 'y1',
+                order: 2
+            });
+
+            myChart.update();
+        }
+
+        // --- Unlock ---
+        function tryUnlock() {
+            const inputPass = passwordInput.value.trim();
+            if (inputPass === CORRECT_PASSWORD) {
+                passError.textContent = '';
+                overlay.classList.add('hidden');
+                if (!myChart) {
+                    initChart();
+                } else {
+                    updateScatterData();
+                }
+            } else {
+                passError.textContent = '❌ Password salah. Silakan coba lagi.';
+                passwordInput.value = '';
+                passwordInput.focus();
+            }
+        }
+
+        // --- Event Listeners ---
+        unlockBtn.addEventListener('click', tryUnlock);
+        passwordInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') tryUnlock();
+        });
+
+        slider.addEventListener('input', function(e) {
+            const val = parseFloat(e.target.value) * 0.032; // scale 0-100 ke 0-3.2 A
+            updateLiveValues(val);
+            if (myChart) {
+                updateScatterData();
+            }
+        });
+
+        // --- Inisialisasi ---
+        updateLiveValues(0.64); // default 20/100 * 3.2 = 0.64 A
+        passwordInput.focus();
+
+        // Hitung daya maksimum untuk ditampilkan di parameter
+        function findMaxPower(cfg) {
+            let maxP = 0;
+            for (let i = 0; i <= 100; i++) {
+                const I = (i / 100) * cfg.imax * 1.2;
+                const P = idealPower(I, cfg);
+                if (P > maxP) maxP = P;
+            }
+            return maxP;
+        }
+        const pmaxPEM = findMaxPower(PEM);
+        const pmaxSOFC = findMaxPower(SOFC);
+        document.getElementById('pmaxPEM').textContent = pmaxPEM.toFixed(2) + ' W';
+        document.getElementById('pmaxSOFC').textContent = pmaxSOFC.toFixed(2) + ' W';
+        document.getElementById('imaxPEM').textContent = PEM.imax.toFixed(2) + ' A';
+        document.getElementById('imaxSOFC').textContent = SOFC.imax.toFixed(2) + ' A';
+    </script>
+</body>
+</html>
